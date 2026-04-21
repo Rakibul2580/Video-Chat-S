@@ -48,37 +48,37 @@ let waitingUsers = [];
 io.on("connection", (socket) => {
   console.log(`✅ New user connected: ${socket.id}`);
 
-  // 1. ইউজার ম্যাচ খুঁজছে
-  socket.on("find-match", () => {
-    console.log(`🔍 User ${socket.id} is looking for a match`);
+  // // 1. ইউজার ম্যাচ খুঁজছে
+  // socket.on("find-match", () => {
+  //   console.log(`🔍 User ${socket.id} is looking for a match`);
 
-    if (waitingUsers.length > 0) {
-      // আগের অপেক্ষমান ইউজারের সাথে ম্যাচ করুন
-      const partner = waitingUsers.shift();
-      const roomId = `room_${socket.id}_${partner.id}`;
+  //   if (waitingUsers.length > 0) {
+  //     // আগের অপেক্ষমান ইউজারের সাথে ম্যাচ করুন
+  //     const partner = waitingUsers.shift();
+  //     const roomId = `room_${socket.id}_${partner.id}`;
 
-      // দুই ইউজারকে একই রুমে যোগ দিন
-      socket.join(roomId);
-      partner.join(roomId);
+  //     // দুই ইউজারকে একই রুমে যোগ দিন
+  //     socket.join(roomId);
+  //     partner.join(roomId);
 
-      // দুইজনকে জানিয়ে দিন ম্যাচ পেয়েছে
-      io.to(socket.id).emit("match-found", {
-        roomId,
-        partnerId: partner.id,
-      });
-      io.to(partner.id).emit("match-found", {
-        roomId,
-        partnerId: socket.id,
-      });
+  //     // দুইজনকে জানিয়ে দিন ম্যাচ পেয়েছে
+  //     io.to(socket.id).emit("match-found", {
+  //       roomId,
+  //       partnerId: partner.id,
+  //     });
+  //     io.to(partner.id).emit("match-found", {
+  //       roomId,
+  //       partnerId: socket.id,
+  //     });
 
-      console.log(`✨ Matched: ${socket.id} with ${partner.id}`);
-    } else {
-      // কেউ না থাকলে অপেক্ষমান তালিকায় যোগ করুন
-      waitingUsers.push(socket);
-      socket.emit("waiting");
-      console.log(`⏳ User ${socket.id} added to waiting queue`);
-    }
-  });
+  //     console.log(`✨ Matched: ${socket.id} with ${partner.id}`);
+  //   } else {
+  //     // কেউ না থাকলে অপেক্ষমান তালিকায় যোগ করুন
+  //     waitingUsers.push(socket);
+  //     socket.emit("waiting");
+  //     console.log(`⏳ User ${socket.id} added to waiting queue`);
+  //   }
+  // });
 
   // 2. WebRTC Offer (কল শুরু করার সিগন্যাল)
   socket.on("offer", ({ offer, roomId }) => {
