@@ -20,7 +20,7 @@ app.use(cors());
 app.use(express.json());
 
 // হেলথ চেক এন্ডপয়েন্ট (API লিংক: http://your-server.com/health)
-app.get("/health", (req, res) => {
+app.get("/", (req, res) => {
   res.json({ status: "Server is running", timestamp: new Date() });
 });
 
