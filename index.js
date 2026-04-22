@@ -1,67 +1,132 @@
 const express = require("express");
+
 const http = require("http");
+
 const socketIo = require("socket.io");
+
 const cors = require("cors");
 
+const dotenv = require("dotenv");
+
+// কনফিগারেশন লোড করুন
+
+dotenv.config();
+
 const app = express();
+
+const PORT = process.env.PORT || 3000;
+
+const CLIENT_URL = process.env.CLIENT_URL || "https://fanfun.xyz"; // 🔴 প্রোডাকশনে এই লিংকটি পরিবর্তন করুন
+
+// মিডলওয়্যার
+
 app.use(cors());
+
+app.use(express.json());
+
+// হেলথ চেক এন্ডপয়েন্ট (API লিংক: http://your-server.com/health)
+
+app.get("/", (req, res) => {
+  res.json({ status: "Server is running", timestamp: new Date() });
+});
+
+// HTTP সার্ভার তৈরি
 
 const server = http.createServer(app);
 
+// Socket.io সেটআপ
+
+// 🔴 প্রোডাকশনে নিচের 'cors.origin' এ আপনার ফ্রন্টএন্ডের ঠিকানা দিন:
+
+//    উদাহরণ: "https://your-domain.com" (amarhost.com এর ঠিকানা)
+
 const io = socketIo(server, {
   cors: {
-    origin: "*",
+    origin: CLIENT_URL, // 🔴 এই লিংকটি পরিবর্তন করতে হবে
+
     methods: ["GET", "POST"],
+
     credentials: true,
   },
-  transports: ["websocket", "polling"], // গুরুত্বপূর্ণ
 });
 
-let waitingUser = null;
+// অপেক্ষমান ইউজারের কিউ
+
+let waitingUsers = [];
+
+// ============================================
+
+// সকেট ইভেন্ট হ্যান্ডলার
+
+// ============================================
 
 io.on("connection", (socket) => {
-  console.log(`🟢 User connected: ${socket.id}`);
+  console.log(`✅ New user connected: ${socket.id}`);
 
+  // 1. ম্যাচ খোঁজা
   socket.on("find-match", () => {
-    if (waitingUser) {
-      const roomId = `room_${socket.id}_${waitingUser.id}`;
+    console.log(`🔍 User ${socket.id} is looking for a match`);
+
+    if (waitingUsers.length > 0) {
+      const partner = waitingUsers.shift();
+      const roomId = `room_${socket.id}_${partner.id}`;
+
       socket.join(roomId);
-      waitingUser.join(roomId);
+      partner.join(roomId);
 
-      // দুজনকে ম্যাচ ফাউন্ড ইভেন্টে partnerId পাঠানো হচ্ছে
-      socket.emit("match-found", { roomId, partnerId: waitingUser.id });
-      waitingUser.emit("match-found", { roomId, partnerId: socket.id });
+      // 🔴 গুরুত্বপূর্ণ: কে initiator হবে তা ঠিক করা
+      io.to(socket.id).emit("match-found", {
+        roomId,
+        partnerId: partner.id,
+        isInitiator: true, // নতুন ইউজার initiator
+      });
 
-      waitingUser = null;
-      console.log(`✨ Matched ${socket.id} with ${waitingUser?.id}`);
+      io.to(partner.id).emit("match-found", {
+        roomId,
+        partnerId: socket.id,
+        isInitiator: false, // অপেক্ষমান ইউজার answerer
+      });
+
+      console.log(`✨ Matched: ${socket.id} with ${partner.id}`);
     } else {
-      waitingUser = socket;
+      waitingUsers.push(socket);
       socket.emit("waiting");
-      console.log(`⏳ ${socket.id} is waiting`);
+      console.log(`⏳ User ${socket.id} added to waiting queue`);
     }
   });
 
-  socket.on("offer", ({ offer, roomId }) => {
-    socket.to(roomId).emit("offer", { offer, roomId });
+  // 🔴 নতুন: সব signaling এর জন্য একটা generic event
+  socket.on("send-signal", ({ signal, roomId }) => {
+    console.log(`📡 Signal from ${socket.id} in room ${roomId}`);
+    socket.to(roomId).emit("receive-signal", { signal, from: socket.id });
   });
 
-  socket.on("answer", ({ answer, roomId }) => {
-    socket.to(roomId).emit("answer", { answer });
-  });
-
-  socket.on("ice-candidate", ({ candidate, roomId }) => {
-    socket.to(roomId).emit("ice-candidate", { candidate });
-  });
-
+  // ডিসকানেক্ট
   socket.on("disconnect", () => {
-    if (waitingUser === socket) {
-      waitingUser = null;
-    }
-    console.log(`🔴 User disconnected: ${socket.id}`);
+    const index = waitingUsers.indexOf(socket);
+    if (index !== -1) waitingUsers.splice(index, 1);
+    console.log(`👋 User disconnected: ${socket.id}`);
   });
 });
 
-const PORT = process.env.PORT || 3000;
+// সার্ভার চালু করুন
+
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`
+
+  ========================================
+
+  🚀 Video Chat Server is running!
+
+  ========================================
+
+  📡 Port: ${PORT}
+
+  🌐 Client URL: ${CLIENT_URL}
+
+  🔗 Health check: http://localhost:${PORT}/health
+
+  ========================================
+
+  `);
 });
