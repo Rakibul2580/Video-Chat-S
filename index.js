@@ -63,35 +63,30 @@ let waitingUsers = [];
 io.on("connection", (socket) => {
   console.log(`✅ New user connected: ${socket.id}`);
 
-  // 1. ম্যাচ খোঁজা
   socket.on("find-match", () => {
-    console.log(`🔍 User ${socket.id} is looking for a match`);
-
     if (waitingUsers.length > 0) {
       const partner = waitingUsers.shift();
+
       const roomId = `room_${socket.id}_${partner.id}`;
 
       socket.join(roomId);
       partner.join(roomId);
 
-      // 🔴 গুরুত্বপূর্ণ: কে initiator হবে তা ঠিক করা
-      io.to(socket.id).emit("match-found", {
+      // 🔥 ALWAYS send BOTH sides clearly
+      socket.emit("match-found", {
         roomId,
         partnerId: partner.id,
-        isInitiator: true, // নতুন ইউজার initiator
+        isInitiator: true,
       });
 
-      io.to(partner.id).emit("match-found", {
+      partner.emit("match-found", {
         roomId,
         partnerId: socket.id,
-        isInitiator: false, // অপেক্ষমান ইউজার answerer
+        isInitiator: false,
       });
-
-      console.log(`✨ Matched: ${socket.id} with ${partner.id}`);
     } else {
       waitingUsers.push(socket);
       socket.emit("waiting");
-      console.log(`⏳ User ${socket.id} added to waiting queue`);
     }
   });
 
