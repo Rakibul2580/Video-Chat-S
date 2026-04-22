@@ -27,7 +27,7 @@ app.use(express.json());
 // হেলথ চেক এন্ডপয়েন্ট (API লিংক: http://your-server.com/health)
 
 app.get("/", (req, res) => {
-  res.json({ status: "Server is running", timestamp: new Date() });
+  res.json({ status: "Server is running🔥", timestamp: new Date() });
 });
 
 // HTTP সার্ভার তৈরি
